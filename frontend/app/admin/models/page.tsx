@@ -58,6 +58,13 @@ type FormState = {
   f1_score: string;
   training_time_seconds: string;
   notes: string;
+  file_path: string;
+};
+
+const DEFAULT_PATHS: Record<string, string> = {
+  MLP: "../ML/models/mlp.pt",
+  GRU: "../ML/models/gru.pt",
+  Transformer: "../ML/models/transformer.pt",
 };
 
 const emptyForm: FormState = {
@@ -69,6 +76,7 @@ const emptyForm: FormState = {
   f1_score: "",
   training_time_seconds: "",
   notes: "",
+  file_path: DEFAULT_PATHS["MLP"],
 };
 
 function toNumberOrUndefined(v: string): number | undefined {
@@ -109,6 +117,18 @@ export default function AdminModelsPage() {
     setDialogOpen(true);
   }
 
+  function handleArchitectureChange(v: string) {
+    // Prefill file_path with the conventional default for that architecture,
+    // but only if the field is empty or still matches a previous default —
+    // don't clobber something the admin already typed in on purpose.
+    const wasDefault = Object.values(DEFAULT_PATHS).includes(form.file_path);
+    setForm({
+      ...form,
+      architecture: v,
+      file_path: form.file_path === "" || wasDefault ? (DEFAULT_PATHS[v] || "") : form.file_path,
+    });
+  }
+
   async function handleSave() {
     setSaving(true);
     setError("");
@@ -122,6 +142,7 @@ export default function AdminModelsPage() {
         f1_score: toNumberOrUndefined(form.f1_score),
         training_time_seconds: toNumberOrUndefined(form.training_time_seconds),
         notes: form.notes || undefined,
+        file_path: form.file_path || undefined,
       });
       setDialogOpen(false);
       loadVersions();
@@ -173,7 +194,8 @@ export default function AdminModelsPage() {
               <DialogTitle>Register model version</DialogTitle>
               <DialogDescription>
                 Record the results of a training run. Metrics are optional but
-                recommended for comparison.
+                recommended for comparison. File path is required for this
+                version to actually be usable for predictions once activated.
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-2 max-h-[60vh] overflow-y-auto pr-1">
@@ -181,7 +203,7 @@ export default function AdminModelsPage() {
                 <Label>Architecture</Label>
                 <Select
                   value={form.architecture}
-                  onValueChange={(v) => v && setForm({ ...form, architecture: v })}
+                  onValueChange={(v) => v && handleArchitectureChange(v)}
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -192,6 +214,22 @@ export default function AdminModelsPage() {
                     <SelectItem value="Transformer">Transformer</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="file_path">
+                  File path <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="file_path"
+                  value={form.file_path}
+                  onChange={(e) => setForm({ ...form, file_path: e.target.value })}
+                  placeholder="../ML/models/mlp.pt"
+                  className="font-mono text-xs"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Path to the .pt file, relative to the backend/ folder. This is
+                  what /predict actually loads when this version is activated.
+                </p>
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="version_label">Version label (optional)</Label>
@@ -297,6 +335,7 @@ export default function AdminModelsPage() {
             <TableRow>
               <TableHead>Architecture</TableHead>
               <TableHead>Label</TableHead>
+              <TableHead>File</TableHead>
               <TableHead>Accuracy</TableHead>
               <TableHead>Precision</TableHead>
               <TableHead>Recall</TableHead>
@@ -310,6 +349,20 @@ export default function AdminModelsPage() {
               <TableRow key={v.id}>
                 <TableCell className="font-medium">{v.architecture}</TableCell>
                 <TableCell>{v.version_label || "—"}</TableCell>
+                <TableCell>
+                  {v.file_path ? (
+                    <span
+                      className="font-mono text-xs text-muted-foreground"
+                      title={v.file_path}
+                    >
+                      {v.file_path.length > 22
+                        ? `…${v.file_path.slice(-20)}`
+                        : v.file_path}
+                    </span>
+                  ) : (
+                    <span className="text-xs text-destructive">Not set</span>
+                  )}
+                </TableCell>
                 <TableCell>{formatPct(v.accuracy)}</TableCell>
                 <TableCell>{formatPct(v.precision)}</TableCell>
                 <TableCell>{formatPct(v.recall)}</TableCell>

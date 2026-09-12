@@ -9,6 +9,7 @@ import {
   getToken, clearToken, predictDropout, getHistory,
   PredictResponse, PredictionHistoryItem,
 } from "@/lib/api";
+import NotificationsBell from "@/components/notifications-bell";
 
 const display = Space_Grotesk({ subsets: ["latin"], weight: ["500", "600", "700"] });
 const mono = IBM_Plex_Mono({ subsets: ["latin"], weight: ["400", "500", "600"] });
@@ -257,6 +258,15 @@ export default function DashboardPage() {
     return new Set(ranked);
   }, [result]);
 
+  // Attention (Transformer) vs. gradient-based saliency (MLP/GRU) — same
+  // shape of data, different meaning, so label the chart accordingly
+  // instead of always implying it's attention.
+  const isAttention = result?.interpretability_method !== "saliency";
+  const chartLabel = isAttention ? "Attention by week" : "Feature importance by week";
+  const chartExplainer = isAttention
+    ? "which weeks influenced the prediction most"
+    : "which weeks the model's gradient was most sensitive to (this architecture has no native attention mechanism)";
+
   return (
     <div className={display.className} style={{ backgroundColor: PAPER, minHeight: "100vh", color: INK }}>
       <header className="border-b px-6 py-5" style={{ borderColor: RULE }}>
@@ -268,19 +278,26 @@ export default function DashboardPage() {
               and Transformer architectures.
             </p>
           </div>
+          <NotificationsBell />
         </div>
         <div className="max-w-5xl mx-auto flex gap-2 mt-4">
           {["MLP", "GRU", "Transformer"].map((m) => (
             <span
               key={m}
               className={mono.className + " text-[11px] px-2 py-1 rounded border"}
-              style={{ borderColor: RULE, color: MUTED }}
+              style={{
+                borderColor: RULE,
+                color: result?.model_architecture === m ? PAPER : MUTED,
+                backgroundColor: result?.model_architecture === m ? SIGNAL : "transparent",
+              }}
             >
               {m}
             </span>
           ))}
           <span className="text-[11px] self-center" style={{ color: MUTED }}>
-            architectures compared in this study
+            {result?.model_architecture
+              ? `active model: ${result.model_architecture}`
+              : "architectures compared in this study"}
           </span>
         </div>
       </header>
@@ -405,8 +422,11 @@ export default function DashboardPage() {
             <div className="space-y-6">
               <RiskGauge score={result.risk_score} />
               <div>
+                <p className="text-xs font-medium mb-0.5" style={{ color: INK }}>
+                  {chartLabel}
+                </p>
                 <p className="text-xs mb-2" style={{ color: MUTED }}>
-                  Attention by week — which weeks influenced the prediction most
+                  {chartExplainer}
                 </p>
                 <AttentionChart data={chartData} topIndices={topIndices} />
                 <div className={mono.className + " flex gap-3 text-[11px] mt-2"} style={{ color: MUTED }}>

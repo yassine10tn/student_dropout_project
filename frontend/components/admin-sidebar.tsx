@@ -11,7 +11,8 @@ import {
   ChevronsUpDown,
   UserCircle,
   BookOpen,
-  BrainCircuit
+  BrainCircuit,
+  ScrollText
 } from "lucide-react";
 import {
   Sidebar,
@@ -38,7 +39,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { clearToken } from "@/lib/api";
 
-
+  
 
 const navGroups = [
   {
@@ -51,7 +52,8 @@ const navGroups = [
       { title: "Courses", url: "/admin/courses", icon: BookOpen },
       { title: "Students", url: "/admin/students", icon: GraduationCap },
       { title: "Users", url: "/admin/users", icon: Users },
-      { title: "Model Registry", url: "/admin/models", icon: BrainCircuit },   // ← new
+      { title: "Model Registry", url: "/admin/models", icon: BrainCircuit },
+      { title: "Audit Log", url: "/admin/audit-log", icon: ScrollText },   // ← new
       { title: "Settings", url: "/admin/settings", icon: Settings },
     ],
   },
