@@ -12,7 +12,6 @@ X_test = np.load(os.path.join(PROCESSED_DIR, "X_test.npy"))
 y_test = np.load(os.path.join(PROCESSED_DIR, "y_test.npy"))
 SEQ_LEN = X_test.shape[1]
 
-# ---- Rebuild the same model architecture ----
 class PositionalEncoding(nn.Module):
     def __init__(self, d_model, max_len=100):
         super().__init__()
@@ -43,13 +42,12 @@ class TransformerClassifier(nn.Module):
         x = self.input_proj(x)
         x = self.pos_encoding(x)
         attn_weights_all = []
-        # manually run through each encoder layer to capture attention
         out = x
         for layer in self.encoder.layers:
             attn_out, attn_weights = layer.self_attn(
                 out, out, out, need_weights=True, average_attn_weights=True
             )
-            attn_weights_all.append(attn_weights)  # (batch, seq_len, seq_len)
+            attn_weights_all.append(attn_weights) 
             out = layer.norm1(out + layer.dropout1(attn_out))
             ff = layer.linear2(layer.dropout(layer.activation(layer.linear1(out))))
             out = layer.norm2(out + layer.dropout2(ff))
@@ -63,7 +61,6 @@ model = TransformerClassifier()
 model.load_state_dict(torch.load(os.path.join(MODELS_DIR, "transformer.pt")))
 model.eval()
 
-# ---- Run on all dropout students in the test set, average attention per week ----
 X_t = torch.tensor(X_test, dtype=torch.float32).unsqueeze(-1)
 y_t = np.array(y_test)
 
@@ -73,8 +70,7 @@ X_dropout = X_t[dropout_idx]
 with torch.no_grad():
     _, attn_weights_all = model(X_dropout, return_attention=True)
 
-# average over layers, then over the "query" dimension, then over all dropout students
-# attn_weights_all[i]: (n_dropout_students, seq_len, seq_len)
+
 last_layer_attn = attn_weights_all[-1]              # (n, seq_len, seq_len)
 week_importance = last_layer_attn.mean(dim=1)        # avg over queries -> (n, seq_len)
 week_importance = week_importance.mean(dim=0).numpy()  # avg over students -> (seq_len,)
