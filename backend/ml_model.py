@@ -1,24 +1,4 @@
-"""
-Loads whichever model is currently marked `is_active=True` in the
-model_versions table, and runs inference with it.
 
-Supports all 3 architectures trained in ML/scripts/:
-  - MLP          (train_mlp.py)        -> flat (batch, 40) input, no attention
-  - GRU          (train_gru.py)        -> (batch, 40, 1) input, no attention
-  - Transformer  (train_transformer.py)-> (batch, 40, 1) input, real self-attention
-
-MLP and GRU have no native interpretability mechanism, so we compute
-gradient-based saliency (d(logit)/d(input), abs value, normalized) as a
-stand-in for "which weeks mattered." This is reported via
-`interpretability_method` so the frontend can label the chart correctly
-("Attention" vs "Feature importance") instead of implying every model
-has real attention.
-
-Models are cached in memory after first load, keyed by (architecture, file_path),
-so repeated /predict calls don't reload from disk every time. Switching the
-active model version in the registry only pays the load cost once, on the
-next prediction after the switch.
-"""
 
 import os
 import math
@@ -35,10 +15,6 @@ import models as db_models
 SEQ_LEN = 40
 SCALER_PATH = os.path.join("..", "data", "processed", "scaler.pkl")
 
-# ---------------------------------------------------------------------------
-# Scaler (shared preprocessing across all 3 architectures — see build_sequences.py)
-# ---------------------------------------------------------------------------
-
 _scaler = None
 
 
@@ -50,9 +26,6 @@ def _get_scaler():
     return _scaler
 
 
-# ---------------------------------------------------------------------------
-# Model class definitions — must match train_mlp.py / train_gru.py / train_transformer.py exactly
-# ---------------------------------------------------------------------------
 
 class MLPClassifier(nn.Module):
     def __init__(self, input_dim=SEQ_LEN):
@@ -138,9 +111,6 @@ MODEL_CLASSES = {
     "transformer": TransformerClassifier,
 }
 
-# ---------------------------------------------------------------------------
-# Model cache — avoid reloading from disk on every /predict call
-# ---------------------------------------------------------------------------
 
 _loaded_models = {}   # (arch_key, file_path) -> nn.Module instance
 _cache_lock = threading.Lock()
@@ -180,9 +150,7 @@ def clear_model_cache():
         _loaded_models.clear()
 
 
-# ---------------------------------------------------------------------------
-# Saliency (gradient-based importance) for architectures with no attention
-# ---------------------------------------------------------------------------
+
 
 def _compute_saliency(logit: torch.Tensor, x: torch.Tensor, collapse_last_dim: bool = False):
     grad = torch.autograd.grad(logit.sum(), x)[0].detach()
@@ -195,9 +163,7 @@ def _compute_saliency(logit: torch.Tensor, x: torch.Tensor, collapse_last_dim: b
     return grad.tolist()
 
 
-# ---------------------------------------------------------------------------
-# Public entry point
-# ---------------------------------------------------------------------------
+
 
 def predict_dropout(weekly_clicks, db=None):
     """
