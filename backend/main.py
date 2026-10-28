@@ -21,8 +21,6 @@ Base.metadata.create_all(bind=engine)
 app = FastAPI(title="Student Dropout Risk API")
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 
-# Predictions at or above this risk score trigger a notification to every
-# other active advisor/admin. Adjust here if 0.7 turns out too noisy/quiet.
 RISK_ALERT_THRESHOLD = 0.7
 
 
@@ -74,7 +72,7 @@ def google_login(payload: schemas.GoogleAuthRequest, db: Session = Depends(get_d
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # Next.js dev server
+    allow_origins=["http://localhost:3000"],  
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -126,13 +124,10 @@ def predict(
             request.weekly_clicks, db=db
         )
     except (RuntimeError, FileNotFoundError, ValueError) as e:
-        # RuntimeError: no active model version / missing file_path (registry misconfigured)
-        # FileNotFoundError: file_path points to a file that doesn't exist on disk
-        # ValueError: bad input length, or unknown architecture string
+       
         raise HTTPException(status_code=503, detail=str(e))
 
-    # Look up the active version's id so we can record it on the Prediction row.
-    # (Previously this was never set, even though the schema supported it.)
+  
     active_version = (
         db.query(models.ModelVersion)
         .filter(models.ModelVersion.is_active == True)  # noqa: E712
@@ -151,8 +146,7 @@ def predict(
     db.commit()
     db.refresh(record)
 
-    # Alert the rest of the team if this crosses the high-risk threshold.
-    # The person who just ran it already sees the result on screen, so skip them.
+    
     if risk_score >= RISK_ALERT_THRESHOLD:
         label = request.student_label or "Unnamed student"
         other_users = (
@@ -200,8 +194,6 @@ def get_history(
 def root():
     return {"status": "Student Dropout Risk API is running"}
 
-# --- ADD THIS to main.py, after your existing routes ---
-# --- Also add `require_role` to your existing auth_utils import if it isn't there already ---
 
 @app.post("/students", response_model=schemas.StudentOut)
 def create_student(
@@ -268,7 +260,6 @@ def delete_student(
     log_audit(db, current_user, "deleted", "student", student_id, student_name)
     return {"detail": "Student deleted"}
 
-# --- ADD THIS to main.py, after your student endpoints ---
 
 @app.post("/courses", response_model=schemas.CourseOut)
 def create_course(
@@ -335,7 +326,6 @@ def delete_course(
     log_audit(db, current_user, "deleted", "course", course_id, course_name)
     return {"detail": "Course deleted"}
 
-# --- ADD THIS to main.py, after your existing routes ---
 
 @app.get("/users", response_model=List[schemas.UserOut])
 def list_users(
@@ -400,7 +390,6 @@ def delete_user_admin(
     log_audit(db, current_user, "deleted", "user", user_id, deleted_email)
     return {"detail": "User deleted"}
 
-# --- ADD THIS to main.py, after your existing routes ---
 
 @app.post("/model-versions", response_model=schemas.ModelVersionOut)
 def create_model_version(
@@ -439,7 +428,6 @@ def activate_model_version(
     if not target:
         raise HTTPException(status_code=404, detail="Model version not found")
 
-    # Only one version can be active at a time — deactivate all, then activate the target
     db.query(models.ModelVersion).update({"is_active": False})
     target.is_active = True
     db.commit()
