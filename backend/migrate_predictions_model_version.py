@@ -1,13 +1,4 @@
-"""
-Run this ONCE from backend/, with venv activated:
-    python migrate_predictions_model_version.py
 
-Adds the missing `model_version_id` column to the predictions table.
-The handoff doc for this project describes this column as already having
-been added via migrate_model_registry.py in an earlier session, but it
-turned out to be missing from this actual app.db file — this script adds
-it now. Idempotent: safe to run twice.
-"""
 
 import sqlite3
 
