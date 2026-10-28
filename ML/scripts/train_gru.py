@@ -1,11 +1,4 @@
-"""
-Run this LOCALLY from ML/scripts/, with venv activated.
-Trains the GRU model on the preprocessed sequences.
-Saves the trained model to ML/models/gru.pt
 
-Usage (from ML/scripts/):
-    python train_gru.py
-"""
 
 import numpy as np
 import torch
@@ -35,7 +28,6 @@ pos_weight = torch.tensor(n_neg / n_pos, dtype=torch.float32)
 print(f"pos_weight for imbalance: {pos_weight.item():.3f}")
 
 # ---- 3. Torch datasets ----
-# GRU expects input shape (batch, seq_len, features) -> we add a features dim of 1
 def make_loader(X, y, batch_size=64, shuffle=False):
     X_t = torch.tensor(X, dtype=torch.float32).unsqueeze(-1)  # (N, 40, 1)
     y_t = torch.tensor(y, dtype=torch.float32)
