@@ -1,15 +1,4 @@
-"""
-Run this ONCE from backend/, with venv activated:
-    python migrate_model_filepath.py
 
-Adds a `file_path` column to model_versions, and backfills the 3 existing
-rows (MLP / GRU / Transformer) with their known .pt paths so /predict has
-something to load immediately, without you having to re-enter them by hand
-in the UI.
-
-Idempotent: safe to run twice — it checks if the column already exists
-before trying to add it, and only backfills rows where file_path is NULL.
-"""
 
 import sqlite3
 import os
@@ -38,7 +27,6 @@ def main():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
-    # Step 1: add the column if it's not already there
     if not column_exists(cursor, "model_versions", "file_path"):
         cursor.execute("ALTER TABLE model_versions ADD COLUMN file_path TEXT")
         conn.commit()
@@ -46,7 +34,6 @@ def main():
     else:
         print("file_path column already exists — skipping ALTER TABLE.")
 
-    # Step 2: backfill existing rows by architecture, only where NULL
     cursor.execute("SELECT id, architecture, file_path FROM model_versions")
     rows = cursor.fetchall()
 
@@ -54,7 +41,7 @@ def main():
     skipped_unknown = []
     for row_id, architecture, existing_path in rows:
         if existing_path is not None:
-            continue  # already has a path, don't overwrite
+            continue  
 
         default_path = DEFAULT_PATHS.get(architecture)
         if default_path is None:
